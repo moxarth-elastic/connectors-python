@@ -110,7 +110,7 @@ class S3DataSource(BaseDataSource):
         if os.path.splitext(filename)[-1] not in TIKA_SUPPORTED_FILETYPES:
             logger.debug(f"{filename} can't be extracted")
             return
-        if doc["size_in_bytes"] > DEFAULT_MAX_FILE_SIZE:
+        if doc["size"] > DEFAULT_MAX_FILE_SIZE:
             logger.warning(
                 f"File size for {filename} is larger than {DEFAULT_MAX_FILE_SIZE} bytes. Discarding the file content"
             )
@@ -127,7 +127,7 @@ class S3DataSource(BaseDataSource):
                 file_content.seek(0)
                 data = file_content.read()
                 file_content.close()
-                logger.debug(f"Downloaded {filename} for {doc['size_in_bytes']} bytes ")
+                logger.debug(f"Downloaded {filename} for {doc['size']} bytes ")
                 return {
                     "_timestamp": timestamp,
                     "_attachment": get_base64_value(content=data),
@@ -135,7 +135,7 @@ class S3DataSource(BaseDataSource):
                 }
             except (ClientError, ServerTimeoutError, AioReadTimeoutError) as exception:
                 if (
-                    getattr(exception, "response", {}).get("Error", {}).get("Code")
+                    exception.response.get("Error", {}).get("Code")
                     == "InvalidObjectState"
                 ):
                     logger.warning(
@@ -171,9 +171,7 @@ class S3DataSource(BaseDataSource):
         Returns:
             list: List of buckets
         """
-        return [
-            bucket["Name"] for bucket in self.bucket_list["Buckets"]  # pyright: ignore
-        ]
+        return [bucket["Name"] for bucket in self.bucket_list["Buckets"]]
 
     async def get_docs(self, filtering=None):
         """Get documents from Amazon S3
@@ -185,7 +183,7 @@ class S3DataSource(BaseDataSource):
             dictionary: Document from Amazon S3.
         """
         bucket_list = self.buckets if self.buckets != ["*"] else self.get_bucket_list()
-        page_size = self.configuration["page_size"]
+        page_size = int(self.configuration.get("page_size", DEFAULT_PAGE_SIZE))
         for bucket in bucket_list:
             region_name = await self.get_bucket_region(bucket)
             async with self.session.resource(
@@ -206,16 +204,15 @@ class S3DataSource(BaseDataSource):
                         doc = {
                             "_id": doc_id,
                             "filename": obj_summary.key,
-                            "size_in_bytes": await obj_summary.size,
+                            "size": await obj_summary.size,
                             "bucket": bucket,
                             "owner": owner.get("DisplayName") if owner else "",
                             "storage_class": await obj_summary.storage_class,
                             "_timestamp": (await obj_summary.last_modified).isoformat(),
                         }
+
                         yield doc, partial(
-                            self._get_content,
-                            doc=doc,
-                            region=region_name,
+                            self._get_content, doc=doc, region=region_name
                         )
                 except Exception as exception:
                     logger.warning(

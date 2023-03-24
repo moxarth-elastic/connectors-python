@@ -36,25 +36,19 @@ class DirectoryDataSource(BaseDataSource):
     def get_default_configuration(cls):
         return {
             "directory": {
-                "label": "Directory path",
-                "order": 1,
-                "type": "str",
-                "validations": [],
                 "value": DEFAULT_DIR,
+                "label": "Directory path",
+                "type": "str",
             },
             "pattern": {
-                "display": "text",
-                "label": "File glob-like pattern",
-                "order": 2,
-                "type": "str",
                 "value": "**/*.*",
+                "label": "File glob-like pattern",
+                "type": "str",
             },
             "enable_content_extraction": {
-                "display": "toggle",
-                "label": "Enable content extraction",
-                "order": 3,
-                "type": "bool",
                 "value": DEFAULT_CONTENT_EXTRACTION,
+                "label": "Enable content extraction (true/false)",
+                "type": "bool",
             },
         }
 

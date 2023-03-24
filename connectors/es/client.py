@@ -37,9 +37,7 @@ class ESClient:
 
         if "username" in config:
             if "api_key" in config:
-                raise KeyError(
-                    "You can't use basic auth ('username' and 'password') and 'api_key' at the same time in config.yml"
-                )
+                raise KeyError("You can't use basic auth and Api Key at the same time")
             auth = config["username"], config["password"]
             options["basic_auth"] = auth
             logger.debug(f"Connecting using Basic Auth (user: {config['username']})")
@@ -57,9 +55,7 @@ class ESClient:
         level = config.get("log_level", "INFO").upper()
         es_logger = logging.getLogger("elastic_transport.node")
         set_extra_logger(
-            es_logger,
-            log_level=logging.getLevelName(level),
-            filebeat=logger.filebeat,  # pyright: ignore
+            es_logger, log_level=logging.getLevelName(level), filebeat=logger.filebeat
         )
         self.max_wait_duration = config.get("max_wait_duration", 60)
         self.initial_backoff_duration = config.get("initial_backoff_duration", 5)

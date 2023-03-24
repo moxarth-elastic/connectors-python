@@ -6,9 +6,7 @@
 """
 Command Line Interface.
 
-This is the main entry point of the framework. When the project is installed as
-a Python package, an `elastic-ingest` executable is added in the PATH and
-executes the `main` function of this module, which starts the service.
+Parses arguments and call run() with them.
 """
 import asyncio
 import functools
@@ -21,23 +19,21 @@ from connectors import __version__
 from connectors.config import load_config
 from connectors.logger import logger, set_logger
 from connectors.preflight_check import PreflightCheck
-from connectors.services import get_services
+from connectors.services.base import MultiService
+from connectors.services.job_cleanup import JobCleanUpService
+from connectors.services.sync import SyncService
 from connectors.source import get_source_klasses
 from connectors.utils import get_event_loop
 
-__all__ = ["main"]
-
 
 def _parser():
-    """Parses command-line arguments using ArgumentParser and returns it"""
     parser = ArgumentParser(prog="elastic-ingest")
 
     parser.add_argument(
         "--action",
         type=str,
-        default=["poll", "cleanup"],
-        choices=["poll", "list", "cleanup"],
-        nargs="+",
+        default="poll",
+        choices=["poll", "list"],
         help="What elastic-ingest should do",
     )
 
@@ -89,13 +85,7 @@ def _parser():
     return parser
 
 
-async def _start_service(actions, config, loop):
-    """Starts the service.
-
-    Steps:
-    - performs a preflight check using `PreflightCheck`
-    - instantiates a `MultiService` instance and runs its `run` async function
-    """
+async def _start_service(config, loop):
     preflight = PreflightCheck(config)
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, functools.partial(preflight.shutdown, sig))
@@ -106,7 +96,7 @@ async def _start_service(actions, config, loop):
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.remove_signal_handler(sig)
 
-    multiservice = get_services(actions, config)
+    multiservice = MultiService(SyncService(config), JobCleanUpService(config))
     for sig in (signal.SIGINT, signal.SIGTERM):
         loop.add_signal_handler(sig, functools.partial(multiservice.shutdown, sig.name))
 
@@ -120,12 +110,7 @@ async def _start_service(actions, config, loop):
 
 
 def run(args):
-    """Loads the config file, sets the logger and executes an action.
-
-    Actions:
-    - list: prints out a list of all connectors and exits
-    - poll: starts the event loop and run forever (default)
-    """
+    """Runner"""
 
     # load config
     config = {}
@@ -146,19 +131,15 @@ def run(args):
     )
 
     # just display the list of connectors
-    if args.action == ["list"]:
+    if args.action == "list":
         print("Registered connectors:")
         for source in get_source_klasses(config):
             print(f"- {source.name}")
         print("Bye")
         return 0
 
-    if "list" in args.action:
-        print("Cannot use the `list` action with other actions")
-        return -1
-
     loop = get_event_loop(args.uvloop)
-    coro = _start_service(args.action, config, loop)
+    coro = _start_service(config, loop)
 
     try:
         return loop.run_until_complete(coro)
@@ -171,11 +152,6 @@ def run(args):
 
 
 def main(args=None):
-    """Entry point to the service, responsible for all operations.
-
-    Parses the arguments and calls `run` with them.
-    If `--version` is used, displays the version and exits.
-    """
     parser = _parser()
     args = parser.parse_args(args=args)
     if args.version:

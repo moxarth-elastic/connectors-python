@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# TODO: convert all this install in a docker image we can just use
+# XXX convert all this install in a docker image we can just use
 set -exuo pipefail
 
 sudo apt-get update

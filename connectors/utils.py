@@ -9,11 +9,9 @@ import functools
 import os
 import platform
 import shutil
-import ssl
 import subprocess
 import time
-import urllib.parse
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 
 from base64io import Base64IO
@@ -205,13 +203,13 @@ class MemQueue(asyncio.Queue):
         return self._current_memsize
 
     def _get(self):
-        item_size, item = self._queue.popleft()  # pyright: ignore
+        item_size, item = self._queue.popleft()
         self._current_memsize -= item_size
         return item_size, item
 
     def _put(self, item):
-        self._current_memsize += item[0]  # pyright: ignore
-        self._queue.append(item)  # pyright: ignore
+        self._current_memsize += item[0]
+        self._queue.append(item)
 
     def full(self, next_item_size=0):
         full_by_numbers = super().full()
@@ -250,11 +248,9 @@ class MemQueue(asyncio.Queue):
             # will unlock the corresponding put() call here.
             #
             # This mechanism ensures that we serialize put() calls when the queue is full.
-            putter = self._get_loop().create_future()  # pyright: ignore
-            putter_timeout = self._get_loop().create_task(  # pyright: ignore
-                self._putter_timeout(putter)
-            )
-            self._putters.append(putter)  # pyright: ignore
+            putter = self._get_loop().create_future()
+            putter_timeout = self._get_loop().create_task(self._putter_timeout(putter))
+            self._putters.append(putter)
             try:
                 result = await putter
                 if isinstance(result, asyncio.QueueFull):
@@ -263,7 +259,7 @@ class MemQueue(asyncio.Queue):
                 putter.cancel()  # Just in case putter is not done yet.
                 try:
                     # Clean self._putters from canceled putters.
-                    self._putters.remove(putter)  # pyright: ignore
+                    self._putters.remove(putter)
                 except ValueError:
                     # The putter could be removed from self._putters by a
                     # previous get_nowait call.
@@ -271,7 +267,7 @@ class MemQueue(asyncio.Queue):
                 if not self.full() and not putter.cancelled():
                     # We were woken up by get_nowait(), but can't take
                     # the call.  Wake up the next in line.
-                    self._wakeup_next(self._putters)  # pyright: ignore
+                    self._wakeup_next(self._putters)
                 raise
 
             await putter_timeout
@@ -401,63 +397,6 @@ def retryable(retries=3, interval=1.0, strategy=RetryStrategy.LINEAR_BACKOFF):
         return func_to_execute
 
     return wrapper
-
-
-def ssl_context(certificate):
-    """Convert string to pem format and create a SSL context
-
-    Args:
-        certificate (str): certificate in string format
-
-    Returns:
-        ssl_context: SSL context with certificate
-    """
-    certificate = certificate.replace(" ", "\n")
-    certificate = " ".join(certificate.split("\n", 1))
-    certificate = " ".join(certificate.rsplit("\n", 1))
-    ctx = ssl.create_default_context()
-    ctx.load_verify_locations(cadata=certificate)
-    return ctx
-
-
-def url_encode(original_string):
-    """Performs encoding on the objects
-    containing special characters in their url, and
-    replaces single quote with two single quote since quote
-    is treated as an escape character
-
-    Args:
-        original_string(string): String containing special characters
-
-    Returns:
-        encoded_string(string): Parsed string without single quotes
-    """
-    return urllib.parse.quote(original_string, safe="'")
-
-
-def evaluate_timedelta(seconds, time_skew=0):
-    """Adds seconds to the current utc time.
-
-    Args:
-        seconds (int): Number of seconds to add in current time
-        time_skew (int): Time of clock skew. Defaults to 0
-    """
-    modified_time = datetime.utcnow() + timedelta(seconds=seconds)
-    # account for clock skew
-    modified_time -= timedelta(seconds=time_skew)
-    return iso_utc(when=modified_time)
-
-
-def is_expired(expires_at):
-    """Compares the given time with present time
-
-    Args:
-        expires_at (datetime): Time to check if expired.
-    """
-    # Recreate in case there's no expires_at present
-    if expires_at is None:
-        return True
-    return datetime.utcnow() >= expires_at
 
 
 def get_pem_format(key, max_split=-1):

@@ -73,47 +73,34 @@ class AzureBlobStorageDataSource(BaseDataSource):
         """
         return {
             "account_name": {
-                "label": "Azure Blob Storage account name",
-                "order": 1,
-                "type": "str",
                 "value": "devstoreaccount1",
+                "label": "Azure Blob Storage account name",
+                "type": "str",
             },
             "account_key": {
-                "label": "Azure Blob Storage account key",
-                "order": 2,
-                "type": "str",
                 "value": "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==",
+                "label": "Azure Blob Storage account key",
+                "type": "str",
             },
             "blob_endpoint": {
-                "label": "Azure Blob Storage blob endpoint",
-                "order": 3,
-                "type": "str",
                 "value": "http://127.0.0.1:10000/devstoreaccount1",
+                "label": "Azure Blob Storage blob endpoint",
+                "type": "str",
             },
             "enable_content_extraction": {
-                "display": "toggle",
-                "label": "Enable content extraction",
-                "order": 4,
-                "type": "bool",
                 "value": DEFAULT_CONTENT_EXTRACTION,
+                "label": "Enable content extraction (true/false)",
+                "type": "bool",
             },
             "retry_count": {
-                "default_value": DEFAULT_RETRY_COUNT,
-                "display": "numeric",
-                "label": "Retries per request",
-                "order": 5,
-                "required": False,
-                "type": "int",
                 "value": DEFAULT_RETRY_COUNT,
+                "label": "Retries per request",
+                "type": "int",
             },
             "concurrent_downloads": {
-                "default_value": MAX_CONCURRENT_DOWNLOADS,
-                "display": "numeric",
-                "label": "Maximum concurrent downloads",
-                "order": 6,
-                "required": False,
-                "type": "int",
                 "value": MAX_CONCURRENT_DOWNLOADS,
+                "label": "Maximum concurrent downloads",
+                "type": "int",
             },
         }
 
@@ -224,7 +211,7 @@ class AzureBlobStorageDataSource(BaseDataSource):
             async with aiofiles.open(file=temp_filename, mode="r") as async_buffer:
                 # base64 on macOS will add a EOL, so we strip() here
                 document["_attachment"] = (await async_buffer.read()).strip()
-            await remove(str(temp_filename))
+            await remove(temp_filename)
         return document
 
     async def get_container(self):

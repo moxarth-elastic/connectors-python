@@ -3,9 +3,6 @@
 # or more contributor license agreements. Licensed under the Elastic License 2.0;
 # you may not use this file except in compliance with the Elastic License 2.0.
 #
-""" Helpers to build sources + FQN-based Registry
-"""
-
 import importlib
 from datetime import date, datetime
 from decimal import Decimal
@@ -18,6 +15,9 @@ from connectors.filtering.validation import (
     BasicRulesSetSemanticValidator,
     FilteringValidator,
 )
+
+""" Helpers to build sources + FQN-based Registry
+"""
 
 
 class Field:
@@ -115,12 +115,8 @@ class BaseDataSource:
     service_type = None
 
     def __init__(self, configuration):
-        if not isinstance(configuration, DataSourceConfiguration):
-            raise TypeError(
-                f"Configuration expected type is {DataSourceConfiguration.__name__}, actual: {type(configuration).__name__}."
-            )
-
         self.configuration = configuration
+        assert isinstance(self.configuration, DataSourceConfiguration)
         self.configuration.set_defaults(self.get_default_configuration())
 
     def __str__(self):
@@ -130,30 +126,17 @@ class BaseDataSource:
     def get_simple_configuration(cls):
         """Used to return the default config to Kibana"""
         res = {}
-
-        for config_name, fields in cls.get_default_configuration().items():
-            entry = {
-                "default_value": None,
-                "depends_on": [],
-                "display": "text",
-                "label": "",
-                "options": [],
-                "order": 1,
-                "required": True,
-                "sensitive": False,
-                "tooltip": None,
-                "type": "str",
-                "validations": [],
-                "value": "",
-            }
-
-            for field_property, value in fields.items():
-                if field_property == "label":
-                    entry[field_property] = value if value else config_name.upper()
+        for name, item in cls.get_default_configuration().items():
+            entry = {"label": item.get("label", name.upper())}
+            if item["value"] is None:
+                entry["value"] = ""
+            else:
+                if isinstance(item["value"], bool):
+                    entry["value"] = item["value"] and "true" or "false"
                 else:
-                    entry[field_property] = value
+                    entry["value"] = str(item["value"])
 
-            res[config_name] = entry
+            res[name] = entry
         return res
 
     @classmethod
@@ -198,15 +181,6 @@ class BaseDataSource:
         In that case, this always return True.
         """
         return True
-
-    async def validate_config(self):
-        """When called, validates configuration of the connector that is contained in self.configuration
-
-        If connector configuration is invalid, this method will raise an exception
-        with human-friendly and actionable description
-        """
-        # TODO: when validate_config is implemented everywhere, we should make this method raise NotImplementedError
-        pass
 
     async def ping(self):
         """When called, pings the backend
@@ -313,4 +287,7 @@ def get_source_klasses(config):
 
 def get_source_klass_dict(config):
     """Returns a service type - source klass dictionary"""
-    return {name: get_source_klass(fqn) for name, fqn in config["sources"].items()}
+    result = {}
+    for name, fqn in config["sources"].items():
+        result[name] = get_source_klass(fqn)
+    return result

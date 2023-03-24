@@ -1,7 +1,7 @@
 #!/bin/bash
 set -exuo pipefail
 
-# TODO: convert all this install in a docker image we can just use
+# XXX convert all this install in a docker image we can just use
 sudo apt-get update
 sudo DEBIAN_FRONTEND=noninteractive apt-get install ca-certificates curl gnupg lsb-release -y
 sudo mkdir -p /etc/apt/keyrings
@@ -36,7 +36,7 @@ export PERF8_BIN=$ROOT/bin/perf8
 export PYTHON=$ROOT/bin/python
 export PIP=$ROOT/bin/pip
 export DATA_SIZE=small
-export VERSION=8.8.0-SNAPSHOT
+export VERSION=8.7.0-SNAPSHOT
 
 $PIP install -r requirements/tests.txt
 $PIP install -r requirements/x86_64.txt

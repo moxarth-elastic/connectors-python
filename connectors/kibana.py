@@ -90,6 +90,7 @@ DEFAULT_PIPELINE = {
 }
 
 
+# XXX simulating Kibana click-arounds
 async def prepare(service_type, index_name, config, filtering=None):
     if filtering is None:
         filtering = []
@@ -104,10 +105,7 @@ async def prepare(service_type, index_name, config, filtering=None):
         )
     except elasticsearch.NotFoundError:
         await es.client.ingest.put_pipeline(
-            id="ent-search-generic-ingestion",
-            version=DEFAULT_PIPELINE["version"],
-            description=DEFAULT_PIPELINE["description"],
-            processors=DEFAULT_PIPELINE["processors"],
+            id="ent-search-generic-ingestion", body=DEFAULT_PIPELINE
         )
 
     try:
@@ -129,9 +127,7 @@ async def prepare(service_type, index_name, config, filtering=None):
         }
 
         await es.client.ingest.put_pipeline(
-            id="ent-search-generic-ingestion",
-            description=pipeline["description"],
-            processors=pipeline["processors"],
+            id="ent-search-generic-ingestion", body=pipeline
         )
 
     try:
@@ -153,7 +149,6 @@ async def prepare(service_type, index_name, config, filtering=None):
             # Last sync
             "last_sync_status": None,
             "last_sync_error": None,
-            "last_sync_scheduled_at": None,
             "last_synced": None,
             # Written by connector on each operation,
             # used by Kibana to hint to user about status of connector
@@ -229,7 +224,7 @@ async def upsert_index(es, index, docs=None, mappings=None, settings=None):
 
     if docs is None:
         return
-    # TODO: bulk
+    # XXX bulk
     doc_id = 1
     for doc in docs:
         await es.client.index(index=index, id=doc_id, document=doc)

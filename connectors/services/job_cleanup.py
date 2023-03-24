@@ -15,8 +15,6 @@ IDLE_JOB_ERROR = "The job has not seen any update for some time."
 
 
 class JobCleanUpService(BaseService):
-    name = "cleanup"
-
     def __init__(self, config):
         super().__init__(config)
         self.idling = int(self.service_config.get("job_cleanup_interval", 60 * 5))
@@ -99,8 +97,8 @@ class JobCleanUpService(BaseService):
 
             marked_count = total_count = 0
             async for job in self.sync_job_index.idle_jobs(connector_ids=connector_ids):
-                job_id = job.id
                 try:
+                    job_id = job.id
                     connector_id = job.connector_id
 
                     await job.fail(message=IDLE_JOB_ERROR)
